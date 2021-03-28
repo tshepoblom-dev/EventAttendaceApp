@@ -1,0 +1,106 @@
+﻿@model IEnumerable<EVA.Models.EventViewModel>
+@inject Microsoft.AspNetCore.Http.IHttpContextAccessor _httpContext
+
+@{
+    ViewData["Title"] = "Index";
+    
+        Dictionary<int, string> monthName = new Dictionary<int, string>();
+        monthName.Add(1, "JAN");
+        monthName.Add(2, "FEB");
+        monthName.Add(3, "MAR");
+        monthName.Add(4, "APR");
+        monthName.Add(5, "MAY");
+        monthName.Add(6, "JUN");
+        monthName.Add(7, "JUL");
+        monthName.Add(8, "AUG");
+        monthName.Add(9, "SEP");
+        monthName.Add(10, "OCT");
+        monthName.Add(11, "NOV");
+        monthName.Add(12, "DEC");
+}
+<h1>Upcoming Events</h1>
+@if (_httpContext.HttpContext.User.IsInRole("Admin") || _httpContext.HttpContext.User.IsInRole("SuperAdmin"))
+{
+    <p>
+        <a asp-action="Create">Create New</a>
+    </p>
+}
+<div class="row">
+    @foreach (var item in Model)
+    {
+        <div class="col-md-12">
+            <div class="card p-2 mb-2">
+                <div class="row">
+                    <div class="col-md-3">
+                        <h2>@item.EventStartDateTime.Date.Day.ToString()</h2>
+
+                        <h6>@monthName[@item.EventStartDateTime.Date.Month]</h6>
+                        <p>@item.EventStartDateTime.Year</p>
+                    </div>
+                    <div class="col-md-6">
+                        <p id="@item.EventId-bookings">Bookings Made: @item.BookingsMade</p>
+                        <p>Seat Limit: @item.SeatLimit</p>
+
+                        @{
+                            var isFullText = item.IsFull ? "YES" : "NO";
+                        }
+                        <p id="@item.EventId-booked">Is Full: @isFullText</p>
+                    </div>
+                    <div class="col-md-3">
+                        @if (_httpContext.HttpContext.User.IsInRole("Admin") || _httpContext.HttpContext.User.IsInRole("SuperAdmin"))
+                        {
+                            <a asp-action="Edit" asp-route-id="@item.EventId">Edit</a>
+                            <a asp-action="Details" asp-route-id="@item.EventId">Details</a>
+                            <a asp-action="Delete" asp-route-id="@item.EventId">Delete</a>
+                        }
+                        else
+                        {
+                            <button class="bookingBtn" id="@item.EventId">Book My Seat</button>
+                            @*  <a asp-action="Create" asp-controller="Bookings" asp-route-id="@item.EventId">Book</a> *@
+                        }
+                    </div>
+                </div>
+            </div>
+        </div>
+
+
+        @*
+            <td>
+
+            </td>
+        *@
+    }
+</div>
+
+@section Scripts{
+    <script type="text/javascript">
+
+        $(".bookingBtn").click(function (event) {
+            var clicked = $(this);
+            var id = clicked.attr("id");
+
+            $.ajax({
+                type: 'POST',
+                async: true,
+                url: '/Bookings/Create/' + id,
+                dataType: "json",
+                error: function () {
+                    alert("Something went wrong while trying to place the booking. We are sorry");
+                },
+                success: function (data) {
+                    var json = JSON.parse(data);
+                    alert(json.message);
+                    var bookingsMade = $("#" + id + "-bookings");
+                    var fullyBooked = $("#" + id + "-booked");
+                    if (json.bookingcount)
+                        bookingsMade.text("Bookings Made: " + json.bookingcount);
+                    if (json.fullybooked)
+                        fullyBooked.text("Is Full: " + json.fullybooked);
+                    //console.log(bookingsMade);
+                    //bookingsMade.val();
+                }
+            });
+        });
+
+    </script>
+}

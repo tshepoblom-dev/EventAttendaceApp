@@ -1,0 +1,271 @@
+﻿@model IEnumerable<EVA.Models.BookingViewModel>
+@inject Microsoft.AspNetCore.Http.IHttpContextAccessor _httpContext
+
+@{
+    ViewData["Title"] = "Index";
+}
+@section TopSec{ 
+<style>
+    .propic {
+        width: 90px;
+        height: 90px;
+        object-fit: cover
+    }
+</style>
+}
+<div class="row">
+    <div class="col-md-12" id="eventList">
+        
+    </div>
+</div>
+
+@if (_httpContext.HttpContext.User.IsInRole("Admin") || _httpContext.HttpContext.User.IsInRole("SuperAdmin"))
+{
+    <p>
+        <a asp-action="Create">Create New</a>
+    </p>
+}
+<table class="table">
+    <thead id="table-headings">
+        <tr>
+            @if (_httpContext.HttpContext.User.IsInRole("Admin") || _httpContext.HttpContext.User.IsInRole("SuperAdmin"))
+            {
+                <th>
+                    Attendee
+                </th>
+                <th>
+                    Email
+                </th>
+                <th>
+                    Phone Number
+                </th>
+                <th>
+                    Picture
+                </th>
+            }
+            <th>
+                Booking Status
+            </th>
+        </tr>
+    </thead>
+    <tbody id="table-content">
+        @foreach (var item in Model)
+        {
+            <tr>
+                @if (_httpContext.HttpContext.User.IsInRole("Admin") || _httpContext.HttpContext.User.IsInRole("SuperAdmin"))
+                {
+                    <td>
+                        @Html.DisplayFor(modelItem => item.UserName)
+                    </td>
+                    <td>
+                        <a href="mailto:@item.Email" title="Email them">
+                            @Html.DisplayFor(modelItem => item.Email)
+                        </a>
+                    </td>
+                    <td>
+                        <a href="tel:@item.PhoneNumber" title="Call them">
+                            @Html.DisplayFor(modelItem => item.PhoneNumber)
+                        </a>
+                    </td>
+                    <td>
+                        @if (item.UserProfilePic != null)
+                        {
+                            <img id="profilePicture" class="propic" src="data:image/*;base64,@(Convert.ToBase64String(item.UserProfilePic))">
+                        }
+                    </td>
+                }
+                <td id="@item.BookingId-status">
+                    @item.Status
+                </td>
+                <td>
+                    @if (_httpContext.HttpContext.User.IsInRole("Admin") || _httpContext.HttpContext.User.IsInRole("SuperAdmin"))
+                    {
+                        <button class="approveBtn" id="@item.BookingId">Approve</button>
+                        <span> | </span>
+                        <button class="declineBtn" id="@item.BookingId">Decline</button>
+                        <span> | </span>
+                    }
+                    <a asp-action="Edit" asp-route-id="@item.BookingId">Edit</a> |
+                    <a asp-action="Details" asp-route-id="@item.BookingId">Details</a> |
+                    <a asp-action="Delete" asp-route-id="@item.BookingId">Delete</a>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+@section Scripts{
+    <script type="text/javascript">
+        $(document).ready(function () {
+
+            var evl = document.querySelector("#eventList");
+            var tb = document.querySelector('#table-content');
+
+            $.ajax({
+                type: 'GET',
+                async: true,
+                url: '/Bookings/GetEvents',
+                dataType: "json",
+                error: function () {
+                    alert("Events list could not be loaded. ");
+                },
+                success: function (data) {
+                    var json = JSON.parse(data);
+                    console.log(json.length);
+                    for (var i = 0; i < json.length; i++) {
+                        var _b = document.createElement("button");
+                        _b.setAttribute('class', 'evntBtn');
+                        _b.setAttribute('id', json[i].EventId);
+                        _b.innerHTML = json[i].Title ?? "Unnamed";
+                        evl.appendChild(_b);
+                    }
+
+                    $(".evntBtn").click(function () {
+                        var clicked = $(this);
+                        var id = clicked.attr('id');
+                        console.log(id);
+                        $.ajax({
+                            type: 'GET',
+                            async: true,
+                            url: '/Bookings/GetBookingsByEvent/' + id,
+                            dataType: "json",
+                            error: function () {
+                                alert("Something went wrong while trying to retrieve bookings for this event... ");
+                            },
+                            success: function (data) {
+                               // console.log(data);
+
+                                var jL = JSON.parse(data);
+                                // console.log(jL);
+                                var _tb = document.createElement("tbody");
+                               for (var y = 0; y < jL.length; y++) {
+
+                                    var _tr = document.createElement("tr");
+                                    var _td_name = document.createElement("td");
+                                    _td_name.innerHTML = jL[y].UserName;
+
+                                    var _td_email = document.createElement("td");
+                                    var _a_email = document.createElement("a");
+
+                                    var _td_phone = document.createElement("td");
+                                    var _a_phone = document.createElement("a");
+
+                                    var _td_prpic = document.createElement("td");
+                                    var _td_status = document.createElement("td");
+
+                                    var _td_buttons = document.createElement("td");
+
+                                    var _btnApprove = document.createElement("button");
+                                    var _btnDecline = document.createElement("button");
+
+                                    var _a_edit = document.createElement("a");
+                                    var _a_detail = document.createElement("a");
+                                    var _a_delete = document.createElement("a");
+
+                                    _a_email.setAttribute("href", "mailto:" + jL[y].Email);
+                                    _a_email.setAttribute("title", "Send email to");
+                                    _a_email.innerHTML = jL[y].Email;
+                                    _td_email.appendChild(_a_email);
+
+                                    _a_phone.setAttribute("href", "tel:" + jL[y].PhoneNumber);
+                                    _a_phone.setAttribute("title", "Call");
+                                    _a_phone.innerHTML = jL[y].PhoneNumber;
+                                    _td_phone.appendChild(_a_phone);
+
+                                   _td_prpic.classList.add("propic");
+                                   //"data:image/*;base64,(Convert.ToBase64String(item.UserProfilePic)
+                                    _td_prpic.setAttribute("src", "data:image/*;base64," + jL[y].UserProfilePic_);
+
+                                    _td_status.setAttribute("id", jL[y].BookingId + "-status");
+                                    _td_status.innerHTML = jL[y].Status;
+
+                                    _btnApprove.classList.add("approveBtn");
+                                    _btnApprove.setAttribute("id", jL[y].BookingId);
+                                    _btnApprove.innerHTML = "Approve";
+
+                                    _btnDecline.classList.add("declineBtn");
+                                    _btnDecline.setAttribute("id", jL[y].BookingId);
+                                    _btnDecline.innerHTML = "Decline";
+
+                                    _a_edit.setAttribute("href", "/Bookings/Edit/" + jL[y].BookingId);
+                                    _a_edit.innerHTML = "Edit";
+
+                                    _a_detail.setAttribute("href", "/Bookings/Details/" + jL[y].BookingId);
+                                    _a_detail.innerHTML = "Details";
+
+                                    _a_delete.setAttribute("href", "/Bookings/Delete/" + jL[y].BookingId);
+                                    _a_delete.innerHTML = "Delete";
+
+                                    _td_buttons.appendChild(_btnApprove);
+                                    _td_buttons.appendChild(_btnDecline);
+                                    _td_buttons.appendChild(_a_edit);
+                                    _td_buttons.appendChild(_a_detail);
+                                    _td_buttons.appendChild(_a_delete);
+
+                                    _tr.appendChild(_td_name);
+                                    _tr.appendChild(_td_email);
+                                    _tr.appendChild(_td_phone);
+                                    _tr.appendChild(_td_prpic);
+                                    _tr.appendChild(_td_status);
+                                    _tr.appendChild(_td_buttons);
+
+                                   _tb.appendChild(_tr);
+                                }
+                                _tb.setAttribute("id", "table-content");
+                                tb.replaceWith(_tb);
+                            }
+                        });
+                    });
+
+                }
+            });
+
+
+        });
+
+        $(".approveBtn").click(function () {
+            var clicked = $(this);
+            var id = clicked.attr("id");
+
+            $.ajax({
+                type: 'POST',
+                async: true,
+                url: '/Bookings/ApproveBooking/' + id,
+                dataType: "json",
+                error: function () {
+                    alert("Something went wrong while trying to approve the booking... ");
+                },
+                success: function (data) {
+                    var json = JSON.parse(data);
+                    //$(id + "-status").text(json.outcome);
+                    alert(json.outcome);
+                  //  $(id + "-status").css("color", "green");
+                }
+            });
+        });
+
+        $(".declineBtn").click(function () {
+            var clicked = $(this);
+            var id = clicked.attr("id");
+
+            $.ajax({
+                type: 'POST',
+                async: true,
+                url: '/Bookings/DeclineBooking/' + id,
+                dataType: "json",
+                error: function () {
+                    alert("Something went wrong while trying to decline the booking... ");
+                },
+                success: function (data) {
+                    var json = JSON.parse(data);
+                    alert(json.outcome);
+                    //$(id + "-status").text(json.outcome);
+                //    $(id + "-status").css("color", "red");
+                }
+            });
+        });
+
+
+
+    </script>
+}
